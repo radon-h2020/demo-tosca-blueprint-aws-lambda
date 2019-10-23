@@ -17,6 +17,7 @@
         name: "{{ func_alias }}" 
         region: "{{ aws_region }}"
         state: present
+      register: alias_info
     
     - name: "Add invocation permission of Lambda function on AWS : {{ permission_id }}"
       lambda_policy:
@@ -29,6 +30,6 @@
 
     - name: Set attributes
       set_stats:
-        data: 
-          function_arn: "{{lambda_info.configuration.function_arn}}:{{func_alias}}" 
+        data:
+          function_arn: "{{alias_info.alias_arn}}"
     
