@@ -59,6 +59,13 @@ node_types:
             func_alias: {default: { get_property: [SELF, function_alias] } }
             permission_id: {default: { get_property: [SELF, permission_id] } }
           implementation: playbooks/lambda/create.yml
+        delete:
+          inputs:
+            function_name: {default: { get_property: [SELF, function_name] } }
+            aws_region: {default: { get_property: [SELF, aws_region] } }
+            aws_role: {default:  {get_attribute: [SELF, requires_role, role_arn] }}
+            func_alias: {default: { get_property: [SELF, function_alias] } }
+          implementation: playbooks/lambda/undeploy.yml
     capabilities:
       receives_notification:
         type: tosca.capabilities.Compute
@@ -89,7 +96,12 @@ node_types:
           inputs:
             bucket_name: {default: { get_property: [SELF, bucket_name] } }
             aws_region: {default: { get_property: [SELF, aws_region] } }
-          implementation:  playbooks/bucket/create.yml  
+          implementation:  playbooks/bucket/create.yml
+        delete:
+          inputs:
+            bucket_name: {default: { get_property: [SELF, bucket_name] } }
+            aws_region: {default: { get_property: [SELF, aws_region] } }
+          implementation:  playbooks/bucket/undeploy.yml
     capabilities:
       bucket:
         type: tosca.capabilities.Compute
