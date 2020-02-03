@@ -1,0 +1,184 @@
+tosca_definitions_version: tosca_simple_yaml_1_3
+
+node_types:
+
+  radon.policies.createRole:
+    derived_from: tosca.nodes.SoftwareComponent
+    properties:
+      aws_region:
+        type: string
+      role_name:
+        type: string
+      role_description:
+        type: string
+    attributes:
+      role_arn:
+        type: string
+        description: AWS role arn identifier
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          aws_region: {default: { get_property: [SELF, aws_region] }, type: string}
+          role_name: {default: { get_property: [SELF, role_name] }, type: string }
+          role_description: {default: { get_property: [SELF, role_description] }, type: string }
+        operations:
+          create: playbooks/aws_role/create.yml
+    capabilities:
+      requires_role:
+        type: tosca.capabilities.Compute
+        valid_source_types: [radon.nodes.function.aws_lambda]
+
+  radon.nodes.function.aws_lambda:
+    derived_from: tosca.nodes.SoftwareComponent
+    properties:
+      aws_region:
+        type: string
+      function_name:
+        type: string
+      zip_file:
+        type: string
+        description: path to a function zip file
+      function_alias:
+        type: string
+      permission_id:
+        type: string
+    attributes:
+      function_arn:
+        type: string
+        description: AWS function arn
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          function_name: {default: { get_property: [SELF, function_name] }, type: string }
+          zip_file: {default: { get_property: [SELF, zip_file] }, type: string }
+          aws_region: {default: { get_property: [SELF, aws_region] }, type: string }
+          aws_role: {default: {get_attribute: [SELF, requires_role, role_arn] }, type: string }
+          func_alias: {default: { get_property: [SELF, function_alias] }, type: string }
+          permission_id: {default: { get_property: [SELF, permission_id] }, type: string }
+        operations:
+          create: playbooks/lambda/create.yml
+          delete: playbooks/lambda/undeploy.yml
+    capabilities:
+      receives_notification:
+        type: tosca.capabilities.Compute
+        valid_source_types: [radon.nodes.triggers.bucket_notification]
+    requirements:
+      - bucket:
+          capability: tosca.capabilities.Compute
+          relationship: tosca.relationships.DependsOn
+      - requires_role:
+          capability: tosca.capabilities.Compute
+          relationship: tosca.relationships.DependsOn
+
+
+  radon.nodes.s3_bucket:
+    derived_from: tosca.nodes.SoftwareComponent
+    properties:
+      bucket_name:
+        type: string
+        description: The name of the bucket
+      aws_region:
+        type: string
+    attributes:
+      bucket_name:
+        type: string
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          bucket_name: {default: { get_property: [SELF, bucket_name] }, type: string }
+          aws_region: {default: { get_property: [SELF, aws_region] }, type: string }
+        operations:
+          create: playbooks/bucket/create.yml
+          delete: playbooks/bucket/undeploy.yml
+    capabilities:
+      bucket:
+        type: tosca.capabilities.Compute
+        valid_source_types: [radon.nodes.triggers.bucket_notification]
+
+  radon.nodes.triggers.bucket_notification:
+    derived_from: tosca.nodes.SoftwareComponent
+    properties:
+      aws_region:
+        type: string
+    interfaces:
+      Standard:
+        type: tosca.interfaces.node.lifecycle.Standard
+        inputs:
+          event_name: {default: radon_on_jpg_add, type: string }
+          bucket_name: {default: { get_property: [SELF, bucket, bucket_name] }, type: string }
+          lambda_function_arn: {default:  {get_attribute: [SELF, receives_notification, function_arn] }, type: string }
+          events: {default: "s3:ObjectCreated:*", type: string }
+          suffix: {default: ".jpg", type: string }
+          region: {default: { get_property: [SELF, aws_region] }, type: string }
+        operations:
+          create:  playbooks/bucket_notification/create.yml
+    requirements:
+      - receives_notification:
+          capability: tosca.capabilities.Compute
+          relationship: tosca.relationships.DependsOn
+      - bucket:
+          capability: tosca.capabilities.Compute
+          relationship: tosca.relationships.DependsOn
+
+
+topology_template:
+  node_templates:
+    my-workstation:
+      type: tosca.nodes.Compute
+      attributes:
+        private_address: localhost
+        public_address: localhost
+
+    aws_lambda_role:
+      type: radon.policies.createRole
+      properties:
+        aws_region: eu-central-1
+        role_name: RadonLambda
+        role_description: Lambda role
+      requirements:
+        - host: my-workstation
+
+    aws_lambda:
+      type: radon.nodes.function.aws_lambda
+      properties:
+        aws_region: eu-central-1
+        function_name: radon-toy-example-image-res
+        zip_file: /tmp/X-test-ImageRes.zip
+        function_alias: test
+        permission_id: lambda_test_permission01
+      requirements:
+        - host: my-workstation
+        - requires_role: aws_lambda_role
+
+    bucket_in:
+      type: radon.nodes.s3_bucket
+      properties:
+        bucket_name: radon-img3
+        aws_region: eu-central-1
+      requirements:
+        - host: my-workstation
+
+    bucket_out:
+      type: radon.nodes.s3_bucket
+      properties:
+        bucket_name: radon-img3-resized
+        aws_region: eu-central-1
+      requirements:
+        - host: my-workstation
+
+    bucket_notification:
+      type: radon.nodes.triggers.bucket_notification
+      properties:
+        aws_region: eu-central-1
+      requirements:
+        - host: my-workstation
+        - receives_notification: aws_lambda
+        - bucket: bucket_in
+
+
+
+
+
