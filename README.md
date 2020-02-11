@@ -12,3 +12,31 @@ prerequisites:
 * find opera orchestrator here: https://github.com/xlab-si/xopera-opera, install it and run this blueprint with
 
 `opera deploy <some deploy name> resize_service_opera.yml`
+
+## AWS Api Gateway
+
+prerequisites:
+* if testing API Gateway copy swagger yml file to tmp with: `cp playbooks/api_gateway/RadonApiGateway.yaml /tmp/`.
+
+Run Api gateway example with:
+`opera deploy aws-api-gateway-thumbgen-example.yml`
+
+You can test the deployment of your API Gateway by uploading the image to your original bucket and then invoking the
+function in API by testing the POST method. Here you can provide the following request body:
+
+```json
+{
+  "Records": [
+    {
+      "s3": {
+        "bucket": {
+          "name": "bucket-name"
+        },
+        "object": {
+          "key": "image.jpg"
+        }
+      }
+    }
+  ]
+}
+```
