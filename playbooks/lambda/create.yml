@@ -5,10 +5,12 @@
       lambda:
         name: "{{ function_name }}"
         zip_file: "{{ zip_file }}"
-        runtime: python3.6
+        runtime: "{{ lambda_runtime }}"
         region: "{{ aws_region }}"
         role: "{{ aws_role }}"
-        handler: image_resize.lambda_handler
+        handler: "{{ lambda_handler }}"
+        timeout: "{{ lambda_timeout }}"
+        memory_size: "{{ lambda_memory }}"
       register: lambda_info
     
     - name: Create function alias name

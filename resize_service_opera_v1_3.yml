@@ -43,6 +43,18 @@ node_types:
         type: string
       permission_id:
         type: string
+      lambda_runtime:
+        type: string
+        description: Runtime for lambda (List of possible values - https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html)
+      lambda_handler:
+        type: string
+        description: Handler for lambda function
+      lambda_timeout:
+        type: string
+        description: Function timeout in seconds
+      lambda_memory:
+        type: string
+        description: Function memory in MB
     attributes:
       function_arn:
         type: string
@@ -57,6 +69,10 @@ node_types:
           aws_role: {default: {get_attribute: [SELF, requires_role, role_arn] }, type: string }
           func_alias: {default: { get_property: [SELF, function_alias] }, type: string }
           permission_id: {default: { get_property: [SELF, permission_id] }, type: string }
+          lambda_runtime: {default: { get_property: [SELF, lambda_runtime] }, type: string }
+          lambda_handler: {default: { get_property: [SELF, lambda_handler] }, type: string }
+          lambda_timeout: {default: { get_property: [SELF, lambda_timeout] }, type: string }
+          lambda_memory: {default: { get_property: [SELF, lambda_memory] }, type: string }
         operations:
           create: playbooks/lambda/create.yml
           delete: playbooks/lambda/undeploy.yml
@@ -149,6 +165,10 @@ topology_template:
         zip_file: /tmp/X-test-ImageRes.zip
         function_alias: test
         permission_id: lambda_test_permission01
+        lambda_runtime: python3.6
+        lambda_handler: image_resize.lambda_handler
+        lambda_timeout: 3
+        lambda_memory: 128
       requirements:
         - host: my-workstation
         - requires_role: aws_lambda_role
